@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>$HENDO</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="$HENDO">
+<meta name="theme-color" content="#0a0a0a">
+<style>
+  :root{
+    --bg:#0a0a0a; --card:#171717; --line:#262626;
+    --txt:#f5f5f5; --dim:#737373; --faint:#525252;
+    --green:#16C784; --red:#EA3943;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:max(env(safe-area-inset-top),20px) 16px calc(env(safe-area-inset-bottom) + 84px);
+    max-width:460px; margin:0 auto; min-height:100vh;
+  }
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px}
+  .eyebrow{font-size:10px;letter-spacing:.25em;color:var(--faint)}
+  .tick{font-size:24px;font-weight:700;letter-spacing:.04em;display:flex;gap:8px;align-items:center}
+  .flame{font-size:13px;color:var(--dim);font-weight:600}
+  .score{font-size:32px;font-weight:700;text-align:right;line-height:1}
+  .sub{font-size:11px;text-align:right;color:var(--dim);margin-top:4px}
+  #chartwrap{margin:12px -4px 20px}
+  svg{display:block;width:100%}
+
+  /* task rows with tweet-like circle */
+  .row{display:flex;align-items:center;gap:12px;background:var(--card);
+       border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px}
+  .likewrap{position:relative;width:30px;height:30px;flex-shrink:0}
+  .like{width:30px;height:30px;border-radius:50%;border:2px solid var(--faint);
+       background:none;display:flex;align-items:center;justify-content:center;
+       font-size:14px;color:transparent;transition:transform .1s, background .15s, border-color .15s;
+       position:relative;z-index:2}
+  .like:active{transform:scale(.8)}
+  .row.done .like{background:var(--green);border-color:var(--green);color:#0a0a0a}
+  .row.done .like.pop{animation:pop .45s cubic-bezier(.2,2.2,.4,1)}
+  @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+  .burst{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1}
+  .burst.go{animation:ring .5s ease-out forwards}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(22,199,132,.7)}100%{box-shadow:0 0 0 16px rgba(22,199,132,0)}}
+  .spark{position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;
+       background:var(--green);pointer-events:none;opacity:0}
+  .spark.go{animation:fly .5s ease-out forwards}
+  @keyframes fly{0%{opacity:1;transform:translate(-50%,-50%)}
+    100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy)))}}
+  @media (prefers-reduced-motion: reduce){
+    .like.pop,.burst.go,.spark.go{animation:none}}
+
+  .name{flex:1;font-size:14px}
+  .row.done .name{color:var(--faint);text-decoration:line-through}
+  .pt{font-size:11px;color:var(--faint)}
+  .row.done .pt{color:var(--green)}
+  .del{color:var(--faint);font-size:12px;background:none;border:none;padding:2px 6px;display:none}
+  body.managing .del{display:block}
+  h2{font-size:10px;letter-spacing:.2em;color:var(--faint);font-weight:600;
+     margin:22px 0 8px;display:flex;justify-content:space-between;align-items:center}
+  h2 button{background:none;border:none;color:var(--faint);font-size:10px;
+     text-decoration:underline;text-underline-offset:2px;letter-spacing:normal}
+  .empty{color:#4a4a4a;font-size:13px;padding:2px 4px}
+  .addbar{display:flex;gap:8px;margin-top:20px}
+  .addbar input{flex:1;background:var(--card);border:1px solid var(--line);
+     border-radius:10px;padding:11px 12px;color:var(--txt);font-size:16px;outline:none}
+  .addbar input:focus{border-color:var(--dim)}
+  .addbar button{background:var(--txt);color:#0a0a0a;border:none;border-radius:10px;
+     padding:0 18px;font-weight:600;font-size:14px}
+  .toggles{display:flex;gap:8px;margin-top:8px}
+  .toggles button{background:none;border:1px solid var(--line);color:var(--faint);
+     border-radius:999px;padding:6px 12px;font-size:11px}
+  .toggles button.on{border-color:var(--txt);color:var(--txt)}
+  footer{margin-top:26px;font-size:11px;color:#4a4a4a;line-height:1.5}
+
+  /* stats page */
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .stat .lbl{font-size:10px;letter-spacing:.18em;color:var(--faint)}
+  .stat .val{font-size:22px;font-weight:700;margin-top:6px}
+  #ringwrap{display:flex;flex-direction:column;align-items:center;margin-top:8px}
+  #ringcenter{font-size:34px;font-weight:700}
+  #ringsub{font-size:11px;color:var(--dim);margin-top:2px}
+  .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
+  .cell{aspect-ratio:1;border-radius:4px;background:#1c1c1c}
+  .heatlbl{font-size:10px;color:var(--faint);letter-spacing:.18em;margin-top:20px}
+
+  /* bottom nav */
+  nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,10,.92);
+     backdrop-filter:blur(12px);border-top:1px solid var(--line);
+     display:flex;max-width:460px;margin:0 auto;
+     padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;background:none;border:none;color:var(--faint);
+     padding:14px 0 12px;font-size:11px;letter-spacing:.2em;font-weight:600}
+  nav button.on{color:var(--txt)}
+  .page{display:none}.page.on{display:block}
+  button{cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE: TAPE ============ -->
+<div class="page on" id="pageTape">
+  <header>
+    <div>
+      <div class="eyebrow mono">PERSONAL EXCHANGE</div>
+      <div class="tick mono">$HENDO <span class="flame" id="flameTop"></span></div>
+    </div>
+    <div>
+      <div class="score mono" id="score">0</div>
+      <div class="sub mono" id="sub">today +0 · 0/0 done</div>
+    </div>
+  </header>
+
+  <div id="chartwrap"><svg id="chart" viewBox="0 0 400 170" preserveAspectRatio="none"></svg></div>
+
+  <div class="addbar">
+    <input id="taskInput" placeholder="Add a task…" enterkeyhint="done">
+    <button id="addBtn">Add</button>
+  </div>
+  <div class="toggles">
+    <button id="togToday" class="on">just today</button>
+    <button id="togDaily">every day</button>
+  </div>
+
+  <h2>CORE HOLDINGS · EVERY DAY <button id="editBtn">edit</button></h2>
+  <div id="recurringList"></div>
+
+  <h2>DAY TRADES · JUST TODAY</h2>
+  <div id="todayList"></div>
+
+  <footer>Done = +1. Anything left unchecked when the day ends locks in −1 the next
+  time you open on a new day. Data is saved on this device.</footer>
+</div>
+
+<!-- ============ PAGE: STATS ============ -->
+<div class="page" id="pageStats">
+  <header>
+    <div>
+      <div class="eyebrow mono">MARKET INTERNALS</div>
+      <div class="tick mono">TODAY'S TAPE</div>
+    </div>
+  </header>
+
+  <div id="ringwrap">
+    <svg id="ring" width="190" height="190" viewBox="0 0 190 190"></svg>
+    <div style="text-align:center;margin-top:-124px;pointer-events:none">
+      <div class="mono" id="ringcenter">0%</div>
+      <div class="mono" id="ringsub">of today cleared</div>
+    </div>
+    <div style="height:74px"></div>
+  </div>
+
+  <div class="statgrid">
+    <div class="stat"><div class="lbl mono">STREAK</div><div class="val mono" id="stStreak">–</div></div>
+    <div class="stat"><div class="lbl mono">THIS WEEK</div><div class="val mono" id="stWeek">–</div></div>
+    <div class="stat"><div class="lbl mono">ALL-TIME HIGH</div><div class="val mono" id="stAth">–</div></div>
+    <div class="stat"><div class="lbl mono">DAYS TRACKED</div><div class="val mono" id="stDays">–</div></div>
+  </div>
+
+  <div class="heatlbl mono">LAST 5 WEEKS</div>
+  <div class="heat" id="heat"></div>
+</div>
+
+<nav>
+  <button id="navTape" class="on mono">TAPE</button>
+  <button id="navStats" class="mono">STATS</button>
+</nav>
+
+<script>
+const KEY="hendo-tracker-v1";
+const GREEN="#16C784", RED="#EA3943";
+const uid=()=>Math.random().toString(36).slice(2,9);
+const dstr=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const todayStr=()=>dstr(new Date());
+
+let data;
+function load(){
+  try{data=JSON.parse(localStorage.getItem(KEY))||null}catch(e){data=null}
+  if(!data) data={recurring:[],today:[],checks:{},todayDate:todayStr(),history:[]};
+  const t=todayStr();
+  if(data.todayDate!==t){
+    const all=[...data.recurring,...data.today];
+    if(all.length){
+      const s=all.reduce((a,x)=>a+(data.checks[x.id]?1:-1),0);
+      data.history=data.history.filter(h=>h.date!==data.todayDate);
+      data.history.push({date:data.todayDate,score:s});
+    }
+    data.today=[];data.checks={};data.todayDate=t;
+    save();
+  }
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+
+let isDaily=false, managing=false;
+
+// ---------- derived stats ----------
+function histMap(){const m={};data.history.forEach(h=>m[h.date]=h.score);return m;}
+function streak(){
+  const m=histMap(); let s=0; const d=new Date(); d.setDate(d.getDate()-1);
+  while(true){const k=dstr(d); if(m[k]>0){s++;d.setDate(d.getDate()-1);}else break;}
+  return s;
+}
+function weekRecord(){
+  const m=histMap(); const now=new Date();
+  const start=new Date(now); start.setDate(now.getDate()-now.getDay()); // Sunday
+  let w=0,l=0;
+  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);
+    const k=dstr(d); if(k in m){if(m[k]>0)w++;else if(m[k]<0)l++;}}
+  return w+"-"+l;
+}
+function series(){
+  const hist=[...data.history].sort((a,b)=>a.date<b.date?-1:1);
+  let run=0; const pts=hist.map(h=>{run+=h.score;return run;});
+  return {pts,closed:run};
+}
+
+// ---------- render ----------
+function render(){
+  const all=[...data.recurring,...data.today];
+  const done=all.filter(t=>data.checks[t.id]).length;
+  const live=done;
+  const {pts,closed}=series();
+  const total=closed+live;
+  const color= total>=0?GREEN:RED;
+
+  // header
+  document.getElementById("score").textContent=(total>=0?"+":"")+total;
+  document.getElementById("score").style.color=color;
+  const sub=document.getElementById("sub");
+  sub.textContent="today "+(live>0?"+":"")+live+" · "+done+"/"+all.length+" done";
+  sub.style.color= live>0?GREEN:"#737373";
+  const st=streak();
+  document.getElementById("flameTop").textContent= st>0? "🔥"+st : "";
+
+  drawChart([0,...pts,total],color);
+  renderLists();
+  renderStats(all,done,st);
+}
+
+function renderLists(){
+  const mk=(t,recurring)=>{
+    const done=!!data.checks[t.id];
+    const div=document.createElement("div");
+    div.className="row"+(done?" done":"");
+    div.innerHTML=`<span class="likewrap">
+        <span class="burst"></span>
+        <button class="like" aria-label="toggle">✓</button>
+      </span>
+      <span class="name"></span><span class="pt mono">${done?"+1":"–"}</span>
+      <button class="del">✕</button>`;
+    div.querySelector(".name").textContent=t.name;
+    div.querySelector(".like").onclick=(e)=>toggleTask(t.id,e.currentTarget);
+    div.querySelector(".del").onclick=()=>{
+      if(recurring)data.recurring=data.recurring.filter(x=>x.id!==t.id);
+      else data.today=data.today.filter(x=>x.id!==t.id);
+      delete data.checks[t.id];save();render();};
+    return div;
+  };
+  const rl=document.getElementById("recurringList");rl.innerHTML="";
+  if(!data.recurring.length)rl.innerHTML='<p class="empty">No daily musts yet. Add one above and tag it "every day."</p>';
+  data.recurring.forEach(t=>rl.appendChild(mk(t,true)));
+  const tl=document.getElementById("todayList");tl.innerHTML="";
+  if(!data.today.length)tl.innerHTML='<p class="empty">Nothing extra on the book today.</p>';
+  data.today.forEach(t=>tl.appendChild(mk(t,false)));
+}
+
+function toggleTask(id,btn){
+  const wasDone=!!data.checks[id];
+  data.checks[id]=!wasDone; save();
+  if(!wasDone){ // completing: play the burst before re-render
+    const wrap=btn.parentElement, row=wrap.closest(".row");
+    row.classList.add("done");
+    btn.classList.add("pop");
+    wrap.querySelector(".burst").classList.add("go");
+    for(let i=0;i<6;i++){
+      const s=document.createElement("span");s.className="spark go";
+      const a=(Math.PI*2/6)*i + Math.random()*.5;
+      s.style.setProperty("--dx",Math.cos(a)*22+"px");
+      s.style.setProperty("--dy",Math.sin(a)*22+"px");
+      wrap.appendChild(s);
+    }
+    setTimeout(render,460);
+  } else render();
+}
+
+function drawChart(vals,color){
+  const svg=document.getElementById("chart");
+  const W=400,H=170,P=10;
+  if(vals.length<2)vals=[0,0];
+  const min=Math.min(0,...vals), max=Math.max(1,...vals);
+  const x=i=>P+(W-2*P)*i/(vals.length-1);
+  const y=v=>H-P-(H-2*P)*(v-min)/(max-min||1);
+  let path="M"+x(0)+" "+y(vals[0]);
+  vals.forEach((v,i)=>{if(i)path+=" L"+x(i)+" "+y(v);});
+  const area=path+` L${x(vals.length-1)} ${H-P} L${x(0)} ${H-P} Z`;
+  const zero=y(0);
+  svg.innerHTML=`
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <line x1="0" y1="${zero}" x2="${W}" y2="${zero}" stroke="#333" stroke-dasharray="4 4"/>
+    <path d="${area}" fill="url(#g)"/>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(vals.length-1)}" cy="${y(vals[vals.length-1])}" r="4" fill="${color}"/>`;
+}
+
+// ---------- stats page ----------
+function lerp(a,b,t){return Math.round(a+(b-a)*t)}
+function ringColor(p){ // red at 0 -> green at 1
+  const r1=234,g1=57,b1=67, r2=22,g2=199,b2=132;
+  return `rgb(${lerp(r1,r2,p)},${lerp(g1,g2,p)},${lerp(b1,b2,p)})`;
+}
+function renderStats(all,done,st){
+  const p= all.length? done/all.length : 0;
+  const C=2*Math.PI*80;
+  const col=ringColor(p);
+  document.getElementById("ring").innerHTML=`
+    <circle cx="95" cy="95" r="80" fill="none" stroke="#1e1e1e" stroke-width="14"/>
+    <circle cx="95" cy="95" r="80" fill="none" stroke="${col}" stroke-width="14"
+      stroke-linecap="round" stroke-dasharray="${C}"
+      stroke-dashoffset="${C*(1-p)}" transform="rotate(-90 95 95)"
+      style="transition:stroke-dashoffset .5s ease, stroke .5s ease"/>`;
+  const rc=document.getElementById("ringcenter");
+  rc.textContent=Math.round(p*100)+"%"; rc.style.color=col;
+  document.getElementById("ringsub").textContent=done+"/"+all.length+" of today cleared";
+  document.getElementById("stStreak").textContent= st>0? "🔥 "+st+"d" : "0d";
+  document.getElementById("stWeek").textContent=weekRecord();
+  const {pts}=series();
+  const ath=Math.max(0,...pts, series().closed + done);
+  document.getElementById("stAth").textContent="+"+ath;
+  document.getElementById("stDays").textContent=data.history.length;
+
+  // heatmap: last 35 days ending today
+  const m=histMap(); const heat=document.getElementById("heat"); heat.innerHTML="";
+  const start=new Date(); start.setDate(start.getDate()-34);
+  for(let i=0;i<35;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i);
+    const k=dstr(d); const c=document.createElement("div"); c.className="cell";
+    if(k===todayStr()){ c.style.background= done>0? "rgba(22,199,132,.5)" : "#2a2a2a"; c.style.outline="1px solid #555";}
+    else if(k in m){
+      const s=m[k];
+      c.style.background = s>0? `rgba(22,199,132,${Math.min(.25+s*.15,1)})`
+                    : s<0? `rgba(234,57,67,${Math.min(.25+(-s)*.15,1)})` : "#2a2a2a";
+    }
+    heat.appendChild(c);
+  }
+}
+
+// ---------- add / toggles / nav ----------
+document.getElementById("addBtn").onclick=addTask;
+document.getElementById("taskInput").addEventListener("keydown",e=>{if(e.key==="Enter")addTask();});
+function addTask(){
+  const inp=document.getElementById("taskInput");
+  const name=inp.value.trim(); if(!name)return;
+  (isDaily?data.recurring:data.today).push({id:uid(),name});
+  inp.value=""; save(); render();
+}
+document.getElementById("togToday").onclick=()=>{isDaily=false;syncTog();};
+document.getElementById("togDaily").onclick=()=>{isDaily=true;syncTog();};
+function syncTog(){
+  document.getElementById("togToday").className=isDaily?"":"on";
+  document.getElementById("togDaily").className=isDaily?"on":"";
+}
+document.getElementById("editBtn").onclick=()=>{
+  managing=!managing;
+  document.body.classList.toggle("managing",managing);
+  document.getElementById("editBtn").textContent=managing?"done":"edit";
+};
+function go(page){
+  document.getElementById("pageTape").classList.toggle("on",page==="tape");
+  document.getElementById("pageStats").classList.toggle("on",page==="stats");
+  document.getElementById("navTape").classList.toggle("on",page==="tape");
+  document.getElementById("navStats").classList.toggle("on",page==="stats");
+  window.scrollTo(0,0);
+}
+document.getElementById("navTape").onclick=()=>go("tape");
+document.getElementById("navStats").onclick=()=>go("stats");
+
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){load();render();}});
+load(); render();
+</script>
+</body>
+</html>
